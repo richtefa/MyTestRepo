@@ -31,11 +31,8 @@ void test(MyStruct const* const m)
 //    m->foo_ = 6;
 }
 
-int main() {
-    cout << "Hello, World!" << endl;
-
-//    cv::Mat img = cv::Mat::zeros(10, 10, CV_32FC1);
-
+int main()
+{
     // load image (row-major, BGR, 8-channel unsigned)
     //cv::Mat img1 = cv::imread("/home/fabian/SampleImages/18/42206/101703.png", CV_LOAD_IMAGE_COLOR);
     //cv::Mat img1 = cv::imread("/home/fabian/SampleImages/19/84412/203407.png", CV_LOAD_IMAGE_COLOR);
@@ -65,8 +62,8 @@ int main() {
     img2.convertTo(img3, CV_32FC3, 1.0/255, 0.0);
     assert(img3.type() == CV_32FC3);
 
-    cv::imshow("img3", img3);
-    cv::waitKey(0);
+//    cv::imshow("img3", img3);
+//    cv::waitKey(0);
 
     // convert BGR to HSV
     // @TODO: something seems to be buggy considering the boxes
@@ -75,14 +72,8 @@ int main() {
     //assert(img4.type() == CV_32FC3);
     img4 = img3;
 
-    cv::imshow("img4", img4);
-    cv::waitKey(0);
-
-    // get min- and max-value
-    //double min_val, max_val;
-    //int min_idx, max_idx;
-    //cv::minMaxIdx(img4, &min_val, &max_val, &min_idx, &max_idx);
-    //printf("\ncolor values range from [%.2f] to [%.2f]", min_val, max_val);
+//    cv::imshow("img4", img4);
+//    cv::waitKey(0);
 
     // convert BGR to RGB
 //    cv::Mat img4(img3.rows, img3.cols, CV_32FC3);
@@ -131,12 +122,9 @@ int main() {
 
     vl::selectivesearch(rectsOut, initSeg, histTexOut, histColourOut, &data[0], height, width, similarityMeasures, threshConst, minSize);
 
-    const int min_width = 1;
-    const int min_height = 1;
-
     int num_rects = rectsOut.size() / 4.0;
 
-    printf("\nfound [%d] rects", (unsigned int)num_rects);
+    printf("\n\nfound [%d] rects", (unsigned int)num_rects);
 
     std::vector<cv::Rect> myRects;
 
@@ -157,34 +145,48 @@ int main() {
 
         //printf("\nrect[%d] at [%d,%d] has size [%d x %d]", i, tl_x, tl_y, w, h);
 
-        //if ((w >= min_width && h >= min_height) &&
-        //    (w*h >= 0.0625 * width*height && w*h <= 0.125 * width*height))
-        {
-            myRects.push_back(cv::Rect(tl_x, tl_y, w, h));
-            //cv::rectangle(res, cv::Point(tl_x, tl_y), cv::Point(br_x + 1, br_y + 1), cv::Scalar(0, 1, 0), 1);
+        if ((w >= width*0.15 && h >= height*0.15) && (w <= width*0.5 && h <= height*0.5)) {
+            if (std::max(w / h, h / w) <= 1.4) {
+                myRects.push_back(cv::Rect(tl_x, tl_y, w, h));
+                //cv::rectangle(res, cv::Point(tl_x, tl_y), cv::Point(br_x + 1, br_y + 1), cv::Scalar(0, 1, 0), 1);
+            }
         }
 
         offset += 4;
     }
 
-    printf("\nfound [%d] size-constrained rects", (unsigned int)myRects.size());
+    printf("\n\nfound [%d] size-constrained rects", (unsigned int)myRects.size());
 
     cv::Mat res_all = img4.clone();
+    cv::Mat heatmap_raw = cv::Mat::zeros(height, width, CV_32FC1);
 
     for(unsigned int i = 0; i < myRects.size(); ++i)
     {
-        cv::Mat res = img4.clone();
+        //cv::Mat res = img4.clone();
 
-        cv::rectangle(res, myRects[i], cv::Scalar(0, 1, 0), 1);
+        //cv::rectangle(res, myRects[i], cv::Scalar(0, 1, 0), 1);
         cv::rectangle(res_all, myRects[i], cv::Scalar(0, 0, 1), 1);
+        heatmap_raw(myRects[i]) += 1.0f;
 
         //printf("\nrect[%d] at [%d,%d] has size [%d x %d]", i, myRects[i].tl().x, myRects[i].tl().y, myRects[i].width, myRects[i].height);
 
-        cv::imshow("res", res);
-        cv::waitKey(0);
+        //cv::imshow("res", res);
+        //cv::waitKey(0);
     }
 
     cv::imshow("res_all", res_all);
+    cv::waitKey(0);
+
+    // get min- and max-value
+    double min_val = DBL_MAX, max_val = -DBL_MAX;
+    int min_idx, max_idx;
+    cv::minMaxIdx(heatmap_raw, &min_val, &max_val, &min_idx, &max_idx);
+    printf("\nmin-max range: [%.2f] to [%.2f]", min_val, max_val);
+
+    cv::Mat heatmap_vis;
+    cv::normalize(heatmap_raw, heatmap_vis, 0.0, 1.0, cv::NORM_MINMAX);
+
+    cv::imshow("heatmap_vis", heatmap_vis);
     cv::waitKey(0);
 
     return 0;
